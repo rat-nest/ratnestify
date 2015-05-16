@@ -1,18 +1,24 @@
 var test = require('tape');
 var fs = require('fs');
-var path = requie('path');
-var esprima = require('esprima');
+var path = require('path');
 
 var fixtures = path.join(__dirname, 'fixture');
+var useRat = require('../use-rat');
 
-var simpleAddition = fs.readFileSync(path.join(fixtures, 'simple-addition.js')).toString();
+function runFixture(fixture, fn) {
+  return function(t) {
+    console.log(path.join(fixtures, fixture));
+    fs.readFile(path.join(fixtures, fixture), function(e, d) {
+      t.error(e, 'read fixture');
+      fn(t, useRat(d.toString()))
+    });
+  }
+}
 
 
-test('use rat', function() {
+test('use rat', runFixture('simple-addition.js', function(t, r) {
 
 
-
-
-
-
-});
+  t.equal(r, 'var a = rat_add(rat_frac(1, 2), rat_frac(1, 2));', 'replace ops with fn calls');
+  t.end();
+}));
