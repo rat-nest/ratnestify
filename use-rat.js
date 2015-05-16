@@ -39,18 +39,44 @@ function processFile(code) {
     }
   });
 
+  function createOp(name) {
+    return function(left, right) {
+
+      if (left.type === 'Literal') {
+        ratFracIt(left);
+      }
+
+      if (right.type === 'Literal') {
+        ratFracIt(right);
+      }
+
+      return name;
+    }
+  }
+
   var used = {};
   var useMap = {
     '/' : function(left, right) {
       if (left.type === 'Literal' && right.type === 'Literal') {
         return 'rat_frac'
       } else {
+
+        // a/4
+        if (right.type === 'Literal') {
+          return 'rat_divs';
+        }
+
+        // 4/a = rat_div(rat_frac(4,1), a)
+        if (left.type === 'Literal') {
+          ratFracIt(left);
+        }
+
         return 'rat_div'
       }
     },
-    '*' : function() { return 'rat_mul' },
-    '+' : function() { return 'rat_add' },
-    '-' : function() { return 'rat_sub }' }
+    '*' : createOp('rat_mul'),
+    '+' : createOp('rat_add'),
+    '-' : createOp('rat_sub')
   }
   locations.forEach(function(location) {
 
@@ -82,6 +108,23 @@ function processFile(code) {
   return escodegen.generate(ast);
 }
 
+function ratFracIt(node) {
+  node.type = 'CallExpression';
+  node.callee = {
+    type: 'Identifier',
+    name: 'rat_frac'
+  };
+
+  node.arguments = [{
+    type: 'Literal',
+    value: node.value,
+    raw: node.raw
+  }, {
+    type: 'Literal',
+    value: 1,
+    raw: '1'
+  }];
+}
 
 function buildBinaryFunction(op, node) {
   node.type = 'CallExpression';
