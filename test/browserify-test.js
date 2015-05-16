@@ -1,14 +1,19 @@
 var test = require('tape');
 var browserify = require('browserify');
 var path = require('path');
+var tmp = require('tmp');
+var fs = require('fs');
 
 test('basic bundling', function(t) {
+  tmp.file(function(e, file, n, clean) {
 
-  var b = browserify();
-  b.add(path.join(__dirname, 'fixture', 'scoped.js'));
-  b.transform(path.join(__dirname, '..', 'use-rat.js'));
+    t.error(e, 'created tmp file')
+    var b = browserify();
+    b.add(path.join(__dirname, 'fixture', 'scoped.js'));
+    b.transform(path.join(__dirname, '..', 'use-rat.js'));
 
-  b.bundle()//.pipe(process.stdout);
-  t.end();
-
+    b.bundle()
+    clean();
+    t.end();
+  });
 });

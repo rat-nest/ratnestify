@@ -8,7 +8,9 @@
   },
   "devDependencies": {
     "browserify": "^10.2.0",
-    "tape": "^4.0.0"
+    "concat-stream": "^1.4.8",
+    "tape": "^4.0.0",
+    "tmp": "0.0.26"
   },
   "name": "ratnestify",
   "version": "0.0.0",
@@ -18,7 +20,7 @@
     "test": "test"
   },
   "scripts": {
-    "test": "tape test/*test*.js"
+    "test": "tape test/*.js"
   },
   "repository": {
     "type": "git",

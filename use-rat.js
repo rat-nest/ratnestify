@@ -53,11 +53,11 @@ function processFile(code, extraRequires) {
     return function(left, right) {
 
       if (left.type === 'Literal') {
-        ratFracIt(left);
+        ratFromScalar(left);
       }
 
       if (right.type === 'Literal') {
-        ratFracIt(right);
+        ratFromScalar(right);
       }
 
       return name;
@@ -67,16 +67,17 @@ function processFile(code, extraRequires) {
 // TODO: rat-vec bindings
 
   var moduleMap = {
-    'rat': 'a-rat/',
+    'rat': 'rat-vec/',
     'rat_vec': 'rat-vec/',
     'rat_mat': 'rat-mat/'
   }
 
+
   var used = {};
   var useMap = {
-    '/' : function(left, right) {
+    '/' : function(left, right, ast) {
       if (left.type === 'Literal' && right.type === 'Literal') {
-        return 'rat_frac'
+        return 'rat_scalar'
       } else {
 
         // a/4
@@ -84,9 +85,10 @@ function processFile(code, extraRequires) {
           return 'rat_divs';
         }
 
-        // 4/a = rat_div(rat_frac(4,1), a)
+        // 4/a = rat_div(rat_scalar(4,1), a)
         if (left.type === 'Literal') {
-          ratFracIt(left);
+          requireRatFn(ast, 'rat_scalar', moduleMap.rat + 'scalar', used);
+          ratFromScalar(left);
         }
 
         return 'rat_div'
@@ -114,13 +116,10 @@ function processFile(code, extraRequires) {
     binaryExpressions.reverse().forEach(function(expr) {
       var ratOp = useMap[expr.operator];
 
-      var varName = buildBinaryFunction(ratOp, expr);
-      if (!used[varName]) {
-        used[varName] = true;
-        var m = varName.split('_')
-        var file = m.pop();
-        requireRatFn(ast, varName, moduleMap[m.join('_')] + file);
-      }
+      var varName = buildBinaryFunction(ratOp, expr, ast);
+      var m = varName.split('_')
+      var file = m.pop();
+      requireRatFn(ast, varName, moduleMap[m.join('_')] + file, used);
     });
   });
 
@@ -132,7 +131,11 @@ function processFile(code, extraRequires) {
   return escodegen.generate(ast);
 }
 
-function requireRatFn(ast, varName, moduleName) {
+
+function requireRatFn(ast, varName, moduleName, used) {
+  if (used[varName]) { return }
+  used[varName] = true;
+
   ast.body.unshift({
     type: "VariableDeclaration",
     declarations: [{
@@ -161,11 +164,11 @@ function requireRatFn(ast, varName, moduleName) {
   });
 }
 
-function ratFracIt(node) {
+function ratFromScalar(node) {
   node.type = 'CallExpression';
   node.callee = {
     type: 'Identifier',
-    name: 'rat_frac'
+    name: 'rat_scalar'
   };
 
   node.arguments = [{
@@ -179,8 +182,8 @@ function ratFracIt(node) {
   }];
 }
 
-function buildBinaryFunction(op, node) {
-  var name = op(node.left, node.right)
+function buildBinaryFunction(op, node, ast) {
+  var name = op(node.left, node.right, ast)
 
   node.type = 'CallExpression';
   node.callee = {
