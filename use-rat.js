@@ -98,6 +98,7 @@ function processFile(code, extraRequires) {
     '+' : createOp('rat_add'),
     '-' : createOp('rat_sub')
   }
+
   locations.forEach(function(location) {
 
     var binaryExpressions = [];
@@ -106,7 +107,7 @@ function processFile(code, extraRequires) {
       enter: function(node, parent) {
         if (node.type === 'BinaryExpression') {
           binaryExpressions.push(node);
-        } else if (node.type === 'CallExpression' && node.callee.name.indexOf('vec') === 0) {
+        } else if (node.type === 'CallExpression' && node.callee.name && node.callee.name.indexOf('vec') === 0) {
 
           var name = node.callee.name;
           var dim = parseInt(name.substring(3), 10);
