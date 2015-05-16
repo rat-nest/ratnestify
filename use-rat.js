@@ -1,10 +1,21 @@
 var esprima = require('esprima');
 var estraverse = require('estraverse');
 var escodegen = require('escodegen');
+var through = require('through2')
 
-module.exports = processFile;
+onFile.processFile = processFile
+module.exports = onFile;
 
-function processFile(code) {
+function onFile(filename, flags) {
+  return through(function(d, enc, cb) {
+    var r = processFile(d.toString());
+    this.push(r)
+    cb();
+  })
+}
+
+function processFile(code, extraRequires) {
+  extraRequires = extraRequires || [];
 
   var ast = esprima.parse(code);
 
@@ -53,6 +64,14 @@ function processFile(code) {
     }
   }
 
+// TODO: rat-vec bindings
+
+  var moduleMap = {
+    'rat': 'a-rat/',
+    'rat_vec': 'rat-vec/',
+    'rat_mat': 'rat-mat/'
+  }
+
   var used = {};
   var useMap = {
     '/' : function(left, right) {
@@ -94,8 +113,14 @@ function processFile(code) {
 
     binaryExpressions.reverse().forEach(function(expr) {
       var ratOp = useMap[expr.operator];
-      used[ratOp] = true;
-      buildBinaryFunction(ratOp, expr);
+
+      var varName = buildBinaryFunction(ratOp, expr);
+      if (!used[varName]) {
+        used[varName] = true;
+        var m = varName.split('_')
+        var file = m.pop();
+        requireRatFn(ast, varName, moduleMap[m.join('_')] + file);
+      }
     });
   });
 
@@ -105,6 +130,35 @@ function processFile(code) {
 
 
   return escodegen.generate(ast);
+}
+
+function requireRatFn(ast, varName, moduleName) {
+  ast.body.unshift({
+    type: "VariableDeclaration",
+    declarations: [{
+        type: "VariableDeclarator",
+        id: {
+          type: "Identifier",
+          name: varName
+        },
+        init: {
+          type: "CallExpression",
+          callee: {
+            type: "Identifier",
+            name: "require"
+          },
+          arguments: [
+            {
+              type: "Literal",
+              value: moduleName,
+              raw: "'" + moduleName + "'"
+            }
+          ]
+        }
+      }
+    ],
+    "kind": "var"
+  });
 }
 
 function ratFracIt(node) {
@@ -126,16 +180,17 @@ function ratFracIt(node) {
 }
 
 function buildBinaryFunction(op, node) {
+  var name = op(node.left, node.right)
+
   node.type = 'CallExpression';
   node.callee = {
     type: 'Identifier',
-    name: op(node.left, node.right)
+    name: name
   };
   node.arguments = [
     node.left,
     node.right
   ];
 
-  delete node.left;
-  delete node.right
+  return name;
 }

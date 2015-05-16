@@ -3,7 +3,7 @@ var fs = require('fs');
 var path = require('path');
 
 var fixtures = path.join(__dirname, 'fixture');
-var useRat = require('../use-rat');
+var useRat = require('../use-rat').processFile;
 
 function runFixture(fixture, fn) {
   return function(t) {
