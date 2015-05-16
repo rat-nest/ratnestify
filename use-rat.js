@@ -4,7 +4,6 @@ var escodegen = require('escodegen');
 
 module.exports = processFile;
 
-
 function processFile(code) {
 
   var ast = esprima.parse(code);

@@ -5,6 +5,33 @@
     "estraverse": "^4.1.0"
   },
   "devDependencies": {
+    "browserify": "^10.2.0",
     "tape": "^4.0.0"
-  }
+  },
+  "name": "ratnestify",
+  "version": "0.0.0",
+  "description": "browserify transform for converting normal arithmetic to rational via a \"use rat\" mode",
+  "main": "use-rat.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "tape test/*test*.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rat-nest/ratnestify.git"
+  },
+  "keywords": [
+    "rat",
+    "rat-nest",
+    "browserify-transform",
+    "math"
+  ],
+  "author": "Elijah Insua <tmpvar@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rat-nest/ratnestify/issues"
+  },
+  "homepage": "https://github.com/rat-nest/ratnestify"
 }
