@@ -106,6 +106,33 @@ function processFile(code, extraRequires) {
       enter: function(node, parent) {
         if (node.type === 'BinaryExpression') {
           binaryExpressions.push(node);
+        } else if (node.type === 'CallExpression' && node.callee.name.indexOf('vec') === 0) {
+
+          var name = node.callee.name;
+          var dim = parseInt(name.substring(3), 10);
+          node.callee.name = 'rat_vec'
+
+          requireRatFn(ast, node.callee.name, 'rat-vec/index', used)
+
+          var args = node.arguments.slice();
+          node.arguments = [{
+            type: "ArrayExpression",
+          }];
+
+          if (dim === args.length) {
+            // replace the args with an array of the args
+            node.arguments[0].elements = args;
+
+          } else {
+            var rargs = node.arguments;
+            var arg = args[0];
+            rargs[0].elements = new Array(dim);
+            var elements = rargs[0].elements;
+
+            for (var i=0; i<dim; i++) {
+              elements[i] = arg;
+            }
+          }
         }
       },
       exit : function(node, parent) {

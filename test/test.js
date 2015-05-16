@@ -77,3 +77,62 @@ test('rat scoped in function', runFixture('scoped.js', function(t, r) {
 
   t.end();
 }));
+
+test('rat vec2 (2 component)', function(t) {
+  var r = useRat('"use rat"\nvec2(1, 2);');
+
+  t.equal(r, [
+    "var rat_vec = require('rat-vec/index');",
+    'rat_vec([',
+    '    1,',
+    '    2',
+    ']);',
+  ].join('\n'), 'fill in the other component');
+
+  t.end();
+});
+
+test('rat vec2 (1 component)', function(t) {
+  var r = useRat('"use rat"\nvec2(5)');
+
+
+  t.equal(r, [
+    "var rat_vec = require('rat-vec/index');",
+    'rat_vec([',
+    '    5,',
+    '    5',
+    ']);',].join('\n'), 'fill in the other component');
+
+
+  t.end();
+});
+
+test('rat vec4 (1 component)', function(t) {
+  var r = useRat('"use rat"\nvec4(5)');
+
+  t.equal(r, [
+    "var rat_vec = require('rat-vec/index');",
+    'rat_vec([',
+    '    5,',
+    '    5,',
+    '    5,',
+    '    5',
+    ']);',].join('\n'), 'fill in the other component');
+
+  t.end();
+});
+
+test('rat vec4 (4 components)', function(t) {
+  var r = useRat('"use rat"\nvec4(1,2,3,4)');
+
+  t.equal(r, [
+    "var rat_vec = require('rat-vec/index');",
+    'rat_vec([',
+    '    1,',
+    '    2,',
+    '    3,',
+    '    4',
+    ']);',].join('\n'), 'fill in the other component');
+
+  t.end();
+});
