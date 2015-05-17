@@ -2,6 +2,7 @@ var esprima = require('esprima');
 var estraverse = require('estraverse');
 var escodegen = require('escodegen');
 var through = require('through2')
+var clone = require('clone');
 
 onFile.processFile = processFile
 module.exports = onFile;
@@ -16,11 +17,10 @@ function onFile(filename, flags) {
 
 function processFile(code, extraRequires) {
   extraRequires = extraRequires || [];
-
+  var tmp_id = 0;
   var ast = esprima.parse(code);
 
   // locate 'use rat'
-  var path = [];
   var locations = [];
   estraverse.traverse(ast, {
     enter: function(node, parent) {
@@ -45,7 +45,6 @@ function processFile(code, extraRequires) {
       }
     },
     exit : function(node, parent) {
-      path.pop(node);
     }
   });
 
@@ -99,19 +98,36 @@ function processFile(code, extraRequires) {
     '-' : createOp('rat_sub')
   }
 
+  // console.log(JSON.stringify(ast, null, '  '));
+
+  var trackedVariables = {};
+
   locations.forEach(function(location) {
 
     var binaryExpressions = [];
 
     estraverse.traverse(location, {
-      enter: function(node, parent) {
-        if (node.type === 'BinaryExpression') {
-          binaryExpressions.push(node);
-        } else if (node.type === 'CallExpression' && node.callee.name && node.callee.name.indexOf('vec') === 0) {
+      enter: function enter(node, parent) {
+        // avoid double processing of nodes
+        if (node._seen) { return; }
+        node._seen = true;
 
+        if (node.type === 'BinaryExpression') {
+          var ratOp = useMap[node.operator];
+          var varName = buildBinaryFunction(ratOp, node, ast);
+          binaryExpressions.push(varName);
+        } else if (node.type === 'CallExpression' && node.callee.name && node.callee.name.indexOf('vec') === 0) {
           var name = node.callee.name;
           var dim = parseInt(name.substring(3), 10);
           node.callee.name = 'rat_vec'
+          node._rat_type = 'vec';
+          node._rat_length = dim;
+          node._rat_accessors = new Array(dim);
+          for (var i=0; i<dim; i++) {
+            // TODO: there may be a child that specifies a swizzle that
+            //       will affect this.
+            node._rat_accessors[i] = i;
+          }
 
           requireRatFn(ast, node.callee.name, 'rat-vec/vec', used)
 
@@ -134,6 +150,159 @@ function processFile(code, extraRequires) {
               elements[i] = arg;
             }
           }
+
+          if (parent.type === 'VariableDeclarator') {
+            trackedVariables[parent.id.name] = {
+              component : function(letter) {
+                // TODO: handle access out of range
+                switch (letter) {
+                  case 'x':
+                    return 0;
+                  break;
+                  case 'y':
+                    return 1;
+                  break;
+                  case 'z':
+                    return 2
+                  break;
+                  case 'w':
+                    return 3;
+                  break;
+                }
+                return null;
+              },
+              node: node,
+              parent: parent,
+              length: dim
+            }
+          }
+
+
+        } else if (node.type === 'MemberExpression') {
+          var variable = node.object.name;
+          var tracked = trackedVariables[variable];
+          if (tracked) {
+            if (parent.type === 'CallExpression') {
+              var prop = node.property.name;
+
+              var l = prop.length;
+              var r = {
+                type: "ArrayExpression",
+                elements: Array(l+1)
+              }
+              for (var i=0; i<l; i++) {
+                var component = trackedVariables[variable].component(prop[i]);
+                r.elements[i] = {
+                  type: 'MemberExpression',
+                  computed: true,
+                  object: node.object,
+                  property: {
+                    type: 'Literal',
+                    value: component,
+                    raw: component+'',
+                  }
+                }
+              }
+
+              var denom = trackedVariables[variable].length
+              r.elements[l] = {
+                type: 'MemberExpression',
+                computed: true,
+                object: node.object,
+                property: {
+                  type: 'Literal',
+                  value: denom,
+                  raw: denom+'',
+                }
+              }
+
+              parent.arguments = [r];
+            }
+          }
+        } else if (node.type === 'ExpressionStatement') {
+          // TODO: for swizzle, find where the statement exists
+          //       in the parent and inject the other components
+          if (node.expression.type === 'AssignmentExpression') {
+
+            // handle conversion on the left
+            var left = node.expression.left;
+            var variable = trackedVariables[left.object.name];
+            var loc = 1
+
+            // TODO: other locations
+            // TODO: right side dependent operations
+            var array = parent.body;
+            var loc = array.indexOf(node);
+            array.splice(loc, 1);
+
+            // ensure the right side has been processed prior
+            // to creating assignments
+            var right = node.expression.right;
+            enter(right, node);
+
+            // now, if the right side is some sort of rat_*
+            // then we need to store it as a var and replace
+            // right with the appropriate value
+            if (right._rat_type) {
+              var id = tmp_id++;
+              array.splice(loc, 0, {
+                type: "VariableDeclaration",
+                declarations: [{
+                  type: "VariableDeclarator",
+                  id: {
+                    type: "Identifier",
+                    name: "rat_tmp" + id
+                  },
+                  init: right
+                }],
+                kind: "var"
+              });
+
+              right = {
+                "type": "Identifier",
+                "name": "rat_tmp" + id
+              }
+            }
+
+            if (variable) {
+              var prop = left.property.name;
+              var l = prop.length;
+              var a;
+              for (var i=0; i<l; i++) {
+
+                // TODO: multiple assignments
+
+                a = clone(node);
+                array.splice(loc+i+1, 0, a);
+
+                var index = variable.component(prop[i]);
+                a.expression.left.computed=true;
+                a.expression.left.property = {
+                  type: 'Literal',
+                  value: index,
+                  raw: index+''
+                }
+
+                if (!node.expression.right._rat_type || node.expression.right._rat_length <= 1) {
+                  a.expression.right = right;
+                } else {
+                  a.expression.right = {
+                    type: "MemberExpression",
+                    computed: true,
+                    object: {
+                      type: "Identifier",
+                      name: "rat_tmp" + id
+                    },
+                    property: {
+                      type: "Literal",
+                      value: node.expression.right._rat_accessors[i],
+                      raw: node.expression.right._rat_accessors[i] + ""
+                    }
+                  };
+                }
+              }
+            }
+          }
         }
       },
       exit : function(node, parent) {
@@ -141,10 +310,7 @@ function processFile(code, extraRequires) {
       }
     })
 
-    binaryExpressions.reverse().forEach(function(expr) {
-      var ratOp = useMap[expr.operator];
-
-      var varName = buildBinaryFunction(ratOp, expr, ast);
+    binaryExpressions.reverse().forEach(function(varName) {
       var m = varName.split('_')
       var file = m.pop();
       requireRatFn(ast, varName, moduleMap[m.join('_')] + file, used);
@@ -188,7 +354,7 @@ function requireRatFn(ast, varName, moduleName, used) {
         }
       }
     ],
-    "kind": "var"
+    kind: "var"
   });
 }
 
@@ -198,6 +364,8 @@ function ratFromScalar(node) {
     type: 'Identifier',
     name: 'rat_scalar'
   };
+
+  node._rat_type = 'rat_scalar';
 
   node.arguments = [{
     type: 'Literal',
@@ -218,6 +386,12 @@ function buildBinaryFunction(op, node, ast) {
     type: 'Identifier',
     name: name
   };
+  node._rat_type = name;
+
+  if (name === 'rat_scalar') {
+    node._rat_length = 1;
+  }
+
   node.arguments = [
     node.left,
     node.right
