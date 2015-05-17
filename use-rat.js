@@ -238,8 +238,10 @@ function processFile(code, extraRequires) {
 
             // TODO: other locations
             // TODO: right side dependent operations
+            // TODO: +=, -=, /=, *=
             var array = parent.body;
             var loc = array.indexOf(node);
+            // remove the original
             array.splice(loc, 1);
 
             // ensure the right side has been processed prior
@@ -248,22 +250,37 @@ function processFile(code, extraRequires) {
 
             // expect a swizzle
             if (right.type === 'MemberExpression') {
-
               enter(right.object, right);
               if (right.object._rat_type) {
                 right = right.object;
               }
-
             }
 
-            enter(right, node);
+            enter(right, node.expression);
 
             // now, if the right side is some sort of rat_*
             // then we need to store it as a var and replace
             // right with the appropriate value
             if (right._rat_type) {
+              requireRatFn(ast, 'rat_set', moduleMap.rat + 'set', used);
               var id = tmp_id++;
-              array.splice(loc, 0, {
+
+              var base = {
+                type: 'ExpressionStatement',
+                expression: {
+                  type: 'CallExpression',
+                  callee: {
+                    type: 'Identifier',
+                    name: 'rat_set'
+                  },
+                  arguments: [{
+                    type: 'Identifier',
+                    name: left.object.name
+                  }]
+                }
+              };
+
+              array.splice(loc+1, 0, {
                 type: "VariableDeclaration",
                 declarations: [{
                   type: "VariableDeclarator",
@@ -275,46 +292,67 @@ function processFile(code, extraRequires) {
                 }],
                 kind: "var"
               });
+              loc+=2;
             }
 
             if (variable) {
-              var prop = left.property.name;
-              var l = prop.length;
+              var rightProp;
+              if (node.expression.right.property) {
+                rightProp = node.expression.right.property.name;
+              } else if (node.property) {
+                rightProp = node.property.name;
+              } else if (right.property) {
+                rightProp = right.property.name;
+              }
+
+              var leftProp = left.property.name;
+              var l;
+              if (rightProp) {
+                l = rightProp.length;
+              } else if (right._rat_accessors) {
+                l = right._rat_accessors.length;
+              } else {
+                // TODO: unify this behavior
+                l = leftProp.length;
+              }
+
               var a;
               for (var i=0; i<l; i++) {
 
-                // TODO: multiple assignments
+                a = clone(base);
+                array.splice((loc++) + i, 0, a);
 
-                a = clone(node);
-                array.splice(loc+i+1, 0, a);
+                var leftIndex = vecLetterToNumber(leftProp[i]);
 
-                var index = variable.component(prop[i]);
-                a.expression.left.computed=true;
-                a.expression.left.property = {
+                a.expression.arguments.push({
                   type: 'Literal',
-                  value: index,
-                  raw: index+''
-                }
+                  value: leftIndex,
+                  raw: leftIndex+''
+                });
 
                 if (!right._rat_type || right._rat_length <= 1) {
-                  a.expression.right = {
+                  a.expression.arguments.push({
                     "type": "Identifier",
                     "name": "rat_tmp" + id
-                  };
+                  });
                 } else {
-                  a.expression.right = {
-                    type: "MemberExpression",
-                    computed: true,
-                    object: {
-                      type: "Identifier",
-                      name: "rat_tmp" + id
+                  var rightIndex = (rightProp)? vecLetterToNumber(rightProp[i]) : right._rat_accessors[i];
+                  requireRatFn(ast, 'rat_get', moduleMap.rat + 'get', used);
+                  a.expression.arguments.push({
+                    type: 'CallExpression',
+                    callee: {
+                      type: 'Identifier',
+                      name: 'rat_get'
                     },
-                    property: {
-                      type: "Literal",
+                    arguments: [{
+                      type: 'Identifier',
+                      name: "rat_tmp" + id
+                    }, {
+                      type: 'Literal',
                       value: right._rat_accessors[i],
                       raw: right._rat_accessors[i] + ""
-                    }
-                  };
+                    }]
+                  });
                 }
               }
             }
@@ -326,7 +364,7 @@ function processFile(code, extraRequires) {
       }
     })
 
-    binaryExpressions.reverse().forEach(function(varName) {
+    binaryExpressions.forEach(function(varName) {
       var m = varName.split('_')
       var file = m.pop();
       requireRatFn(ast, varName, moduleMap[m.join('_')] + file, used);

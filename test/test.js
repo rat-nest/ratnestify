@@ -45,8 +45,8 @@ test('division rat vs constant (numerator)', function(t) {
 
 test('rat addition (constants)', runFixture('simple-addition.js', function(t, r) {
   t.equal(r, [
-    "var rat_add = require('rat-vec/add');",
     "var rat_scalar = require('rat-vec/scalar');",
+    "var rat_add = require('rat-vec/add');",
     'var a = rat_add(rat_scalar(1, 2), rat_scalar(1, 2));'
   ].join('\n'), 'replace ops with fn calls');
   t.end();
@@ -54,8 +54,8 @@ test('rat addition (constants)', runFixture('simple-addition.js', function(t, r)
 
 test('rat addition (vars)', runFixture('addition-vars.js', function(t, r) {
   t.equal(r, [
-    "var rat_scalar = require('rat-vec/scalar');",
     "var rat_add = require('rat-vec/add');",
+    "var rat_scalar = require('rat-vec/scalar');",
     'var a = rat_scalar(1, 2);',
     'var b = rat_scalar(2, 2);',
     'var c = rat_add(a, b);',
@@ -66,8 +66,8 @@ test('rat addition (vars)', runFixture('addition-vars.js', function(t, r) {
 
 test('rat scoped in function', runFixture('scoped.js', function(t, r) {
   t.equal(r, [
-    "var rat_add = require('rat-vec/add');",
     "var rat_scalar = require('rat-vec/scalar');",
+    "var rat_add = require('rat-vec/add');",
     'function someFunction() {',
     '    var a = rat_add(rat_scalar(1, 2), rat_scalar(2, 1));',
     '    return a;',
@@ -189,6 +189,7 @@ test('rat vec3 assignment (single)', function(t) {
 
   t.equal(r, [
     "var rat_scalar = require('rat-vec/scalar');",
+    "var rat_set = require('rat-vec/set');",
     "var rat_vec = require('rat-vec/vec');",
     'var v = rat_vec([',
     '    1,',
@@ -196,7 +197,7 @@ test('rat vec3 assignment (single)', function(t) {
     '    3',
     ']);',
     'var rat_tmp0 = rat_scalar(1, 2);',
-    'v[0] = rat_tmp0;'
+    'rat_set(v, 0, rat_tmp0);'
   ].join('\n'), 'new rat-vec');
 
   t.end();
@@ -211,6 +212,7 @@ test('rat vec3 assignment (multiple)', function(t) {
 
   t.equal(r, [
     "var rat_scalar = require('rat-vec/scalar');",
+    "var rat_set = require('rat-vec/set');",
     "var rat_vec = require('rat-vec/vec');",
     'var v = rat_vec([',
     '    1,',
@@ -218,8 +220,8 @@ test('rat vec3 assignment (multiple)', function(t) {
     '    3',
     ']);',
     'var rat_tmp0 = rat_scalar(1, 2);',
-    'v[0] = rat_tmp0;',
-    'v[2] = rat_tmp0;'
+    'rat_set(v, 0, rat_tmp0);',
+    'rat_set(v, 2, rat_tmp0);'
   ].join('\n'), 'new rat-vec');
 
   t.end();
@@ -234,6 +236,8 @@ test('rat vec3 swizzle assignment (vec2)', function(t) {
 
   t.equal(r, [
     "var rat_scalar = require('rat-vec/scalar');",
+    "var rat_get = require('rat-vec/get');",
+    "var rat_set = require('rat-vec/set');",
     "var rat_vec = require('rat-vec/vec');",
     'var v = rat_vec([',
     '    1,',
@@ -244,19 +248,50 @@ test('rat vec3 swizzle assignment (vec2)', function(t) {
     '    rat_scalar(1, 2),',
     '    rat_scalar(1, 4)',
     ']);',
-    'v[0] = rat_tmp0[0];',
-    'v[2] = rat_tmp0[1];'
+    'rat_set(v, 0, rat_get(rat_tmp0, 0));',
+    'rat_set(v, 2, rat_get(rat_tmp0, 1));'
   ].join('\n'), 'new rat-vec');
 
   t.end();
 });
-
 
 test('rat vec3 swizzle assignment from swizzle accessor', function(t) {
   var r = useRat([
     '"use rat"',
     'var v = vec3(1, 2, 3);',
     'v.zyx = vec4(1/2, 1/4, 1/8, 1/16).wxy;',
+  ].join('\n'));
+
+  t.equal(r, [
+    "var rat_scalar = require('rat-vec/scalar');",
+    "var rat_get = require('rat-vec/get');",
+    "var rat_set = require('rat-vec/set');",
+    "var rat_vec = require('rat-vec/vec');",
+    'var v = rat_vec([',
+    '    1,',
+    '    2,',
+    '    3',
+    ']);',
+    'var rat_tmp0 = rat_vec([',
+    '    rat_scalar(1, 2),',
+    '    rat_scalar(1, 4),',
+    '    rat_scalar(1, 8),',
+    '    rat_scalar(1, 16)',
+    ']);',
+    'rat_set(v, 2, rat_get(rat_tmp0, 3));',
+    'rat_set(v, 1, rat_get(rat_tmp0, 0));',
+    'rat_set(v, 0, rat_get(rat_tmp0, 1));'
+  ].join('\n'), 'new rat-vec');
+
+  t.end();
+});
+return
+
+test('rat vec3 swizzle assignment from swizzle accessor', function(t) {
+  var r = useRat([
+    '"use rat"',
+    'var v = vec3(1, 2, 3);',
+    'v.zyx += vec4(1/2, 1/4, 1/8, 1/16).wxy;',
   ].join('\n'));
 
   t.equal(r, [
@@ -280,4 +315,3 @@ test('rat vec3 swizzle assignment from swizzle accessor', function(t) {
 
   t.end();
 });
-
