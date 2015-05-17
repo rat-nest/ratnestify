@@ -318,6 +318,56 @@ test('rat vec3 swizzle += from swizzle accessor', function(t) {
   t.end();
 });
 
+test('rat vec3 += itself', function(t) {
+  var r = useRat([
+    '"use rat"',
+    'var v = vec3(1, 2, 3);',
+    'v += v',
+  ].join('\n'));
+
+  t.equal(r, [
+    "var rat_add = require('rat-vec/add');",
+    "var rat_get = require('rat-vec/get');",
+    "var rat_set = require('rat-vec/set');",
+    "var rat_vec = require('rat-vec/vec');",
+    'var v = rat_vec([',
+    '    1,',
+    '    2,',
+    '    3',
+    ']);',
+    'rat_set(v, 0, rat_add(rat_get(v, 0), rat_get(v, 0)));',
+    'rat_set(v, 1, rat_add(rat_get(v, 1), rat_get(v, 1)));',
+    'rat_set(v, 2, rat_add(rat_get(v, 2), rat_get(v, 2)));'
+  ].join('\n'), 'new rat-vec');
+
+  t.end();
+});
+
+test('rat vec3 swizzle and += itself', function(t) {
+  var r = useRat([
+    '"use rat"',
+    'var v = vec3(1, 2, 3);',
+    'v.zyx += v',
+  ].join('\n'));
+
+  t.equal(r, [
+    "var rat_add = require('rat-vec/add');",
+    "var rat_get = require('rat-vec/get');",
+    "var rat_set = require('rat-vec/set');",
+    "var rat_vec = require('rat-vec/vec');",
+    'var v = rat_vec([',
+    '    1,',
+    '    2,',
+    '    3',
+    ']);',
+    'rat_set(v, 2, rat_add(rat_get(v, 2), rat_get(v, 0)));',
+    'rat_set(v, 1, rat_add(rat_get(v, 1), rat_get(v, 1)));',
+    'rat_set(v, 0, rat_add(rat_get(v, 0), rat_get(v, 2)));'
+  ].join('\n'), 'new rat-vec');
+
+  t.end();
+});
+
 test('rat vec3 swizzle -= from swizzle accessor', function(t) {
   var r = useRat([
     '"use rat"',

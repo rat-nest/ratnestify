@@ -133,6 +133,16 @@ function processFile(code, extraRequires) {
           var ratOp = useMap[node.operator];
           var varName = buildBinaryFunction(ratOp, node, ast);
           binaryExpressions.push(varName);
+        } else if (node.type === 'Identifier') {
+          var identifierVariable = trackedVariables[node.name];
+
+          if (identifierVariable && identifierVariable._rat_type) {
+            Object.keys(identifierVariable).forEach(function(key) {
+              if (key.substring(0, 4) === '_rat') {
+                node[key] = identifierVariable[key];
+              }
+            })
+          }
         } else if (node.type === 'CallExpression' && node.callee.name && node.callee.name.indexOf('vec') > -1) {
           var name = node.callee.name;
           var dim = parseInt(name.substring(3), 10);
@@ -225,18 +235,17 @@ function processFile(code, extraRequires) {
             }
           }
         } else if (node.type === 'ExpressionStatement') {
-          // TODO: for swizzle, find where the statement exists
-          //       in the parent and inject the other components
           if (node.expression.type === 'AssignmentExpression') {
 
             // handle conversion on the left
             var left = node.expression.left;
-            var variable = trackedVariables[left.object.name];
+            var leftName = left.name || left.object.name;
+
+            var variable = trackedVariables[leftName];
             var loc = 1
 
             // TODO: other locations
             // TODO: right side dependent operations
-            // TODO: +=, -=, /=, *=
             var array = parent.body;
             var loc = array.indexOf(node);
             // remove the original
@@ -255,29 +264,29 @@ function processFile(code, extraRequires) {
             }
 
             enter(right, node.expression);
+            var trackedRight = trackedVariables[right.name];
+            var trackedLeft = trackedVariables[left.name];
 
+            var base = {
+              type: 'ExpressionStatement',
+              expression: {
+                type: 'CallExpression',
+                callee: {
+                  type: 'Identifier',
+                  name: 'rat_set'
+                },
+                arguments: [{
+                  type: 'Identifier',
+                  name: leftName
+                }]
+              }
+            };
+
+            var id = tmp_id++;
             // now, if the right side is some sort of rat_*
             // then we need to store it as a var and replace
             // right with the appropriate value
             if (right._rat_type) {
-              requireRatFn(ast, 'rat_set', moduleMap.rat + 'set', used);
-              var id = tmp_id++;
-
-              var base = {
-                type: 'ExpressionStatement',
-                expression: {
-                  type: 'CallExpression',
-                  callee: {
-                    type: 'Identifier',
-                    name: 'rat_set'
-                  },
-                  arguments: [{
-                    type: 'Identifier',
-                    name: left.object.name
-                  }]
-                }
-              };
-
               array.splice(loc+1, 0, {
                 type: "VariableDeclaration",
                 declarations: [{
@@ -290,28 +299,51 @@ function processFile(code, extraRequires) {
                 }],
                 kind: "var"
               });
-              loc+=2;
             }
 
+            // move the insertion point forward so that we don't clobber over
+            // the expected order of ops
+            loc+=2
+
+            requireRatFn(ast, 'rat_set', moduleMap.rat + 'set', used);
+
+
             if (variable) {
-              var rightProp;
+              var rightProp = '';
               if (node.expression.right.property) {
                 rightProp = node.expression.right.property.name;
-              } else if (node.property) {
-                rightProp = node.property.name;
               } else if (right.property) {
                 rightProp = right.property.name;
               }
 
-              var leftProp = left.property.name;
-              var l;
-              if (rightProp) {
-                l = rightProp.length;
-              } else if (right._rat_accessors) {
-                l = right._rat_accessors.length;
-              } else {
-                // TODO: unify this behavior
-                l = leftProp.length;
+
+              var leftProp = '';
+              if (node.expression.left.property) {
+                leftProp = node.expression.left.property.name;
+              } else if (right.property) {
+                leftProp = left.property.name;
+              }
+
+              var leftIdentifierName = (left.object) ? left.object.name : left.name;
+              var leftLength = (trackedLeft) ? trackedLeft.node._rat_length : left._rat_length;
+              var leftAccessors = (trackedLeft) ? trackedLeft.node._rat_accessors : left._rat_accessors;
+
+              if (!leftLength) {
+                leftLength = leftProp.length;
+              }
+
+              var rightIdentifierName = (trackedRight) ? right.name : 'rat_tmp' + id;
+              var rightLength = rightProp.length ? rightProp.length : right._rat_length;
+              var rightAccessors = (trackedRight) ? trackedRight.node._rat_accessors : right._rat_accessors;
+
+              // TODO: optimize the v += v case
+
+              var l = (!rightLength && leftLength > 1) ? leftLength : rightLength;
+
+              if (!l && leftLength===1) {
+                l = 1;
+              } else if (l===1) {
+                l = leftLength;
               }
 
               var a;
@@ -320,21 +352,31 @@ function processFile(code, extraRequires) {
                 a = clone(base);
                 array.splice((loc++) + i + 1, 0, a);
 
-                var leftIndex = vecLetterToNumber(leftProp[i]);
+                var leftIndex;
+                if (trackedLeft) {
+                  leftIndex = trackedLeft.node._rat_accessors[i];
+                } else if (leftProp.length) {
+                  leftIndex = vecLetterToNumber(leftProp[i]);
+                }
+
                 var leftIndexArg = {
                   type: 'Literal',
                   value: leftIndex,
                   raw: leftIndex+''
                 };
 
-                a.expression.arguments.push(leftIndexArg);
+                if (rightLength <= 1) {
+                  if (leftLength >= 1) {
+                    a.expression.arguments.push(leftIndexArg);
+                  }
 
-                if (!right._rat_type || right._rat_length <= 1) {
                   a.expression.arguments.push({
                     "type": "Identifier",
-                    "name": "rat_tmp" + id
+                    "name": rightIdentifierName
                   });
                 } else {
+                  a.expression.arguments.push(leftIndexArg);
+
 
                   var lastArg = {
                     type: 'CallExpression',
@@ -344,11 +386,11 @@ function processFile(code, extraRequires) {
                     },
                     arguments: [{
                       type: 'Identifier',
-                      name: "rat_tmp" + id
+                      name: rightIdentifierName
                     }, {
                       type: 'Literal',
-                      value: right._rat_accessors[i],
-                      raw: right._rat_accessors[i] + ""
+                      value: rightAccessors[i],
+                      raw: rightAccessors[i] + ""
                     }]
                   };
 
@@ -357,10 +399,8 @@ function processFile(code, extraRequires) {
 
                   // simple assignment `=`
                   if (node.expression.operator.length === 1) {
-                    var rightIndex = (rightProp)? vecLetterToNumber(rightProp[i]) : right._rat_accessors[i];
                     a.expression.arguments.push(lastArg);
                   } else {
-
                     var inject = {
                       type: 'CallExpression',
                       callee: {
@@ -375,7 +415,7 @@ function processFile(code, extraRequires) {
                         },
                         arguments: [{
                           type: 'Identifier',
-                          name: left.object.name
+                          name: leftIdentifierName
                         }, leftIndexArg]
                       }, lastArg]
                     };
