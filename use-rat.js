@@ -15,6 +15,25 @@ function onFile(filename, flags) {
   })
 }
 
+function vecLetterToNumber(letter) {
+  // TODO: handle access out of range
+  switch (letter) {
+    case 'x':
+      return 0;
+    break;
+    case 'y':
+      return 1;
+    break;
+    case 'z':
+      return 2
+    break;
+    case 'w':
+      return 3;
+    break;
+  }
+  return null;
+}
+
 function processFile(code, extraRequires) {
   extraRequires = extraRequires || [];
   var tmp_id = 0;
@@ -31,7 +50,6 @@ function processFile(code, extraRequires) {
         if (p.body) {
           p = p.body;
         }
-
 
         for (var i = 0; i<p.length; i++) {
 
@@ -70,7 +88,6 @@ function processFile(code, extraRequires) {
     'rat_vec': 'rat-vec/',
     'rat_mat': 'rat-mat/'
   }
-
 
   var used = {};
   var useMap = {
@@ -116,19 +133,26 @@ function processFile(code, extraRequires) {
           var ratOp = useMap[node.operator];
           var varName = buildBinaryFunction(ratOp, node, ast);
           binaryExpressions.push(varName);
-        } else if (node.type === 'CallExpression' && node.callee.name && node.callee.name.indexOf('vec') === 0) {
+        } else if (node.type === 'CallExpression' && node.callee.name && node.callee.name.indexOf('vec') > -1) {
           var name = node.callee.name;
           var dim = parseInt(name.substring(3), 10);
           node.callee.name = 'rat_vec'
           node._rat_type = 'vec';
           node._rat_length = dim;
           node._rat_accessors = new Array(dim);
-          for (var i=0; i<dim; i++) {
-            // TODO: there may be a child that specifies a swizzle that
-            //       will affect this.
-            node._rat_accessors[i] = i;
-          }
 
+          if (parent.property) {
+            var swizzle = parent.property.name;
+
+            var l = swizzle.length;
+            for (var i=0; i<l; i++) {
+              node._rat_accessors[i] = vecLetterToNumber(swizzle[i]);
+            }
+          } else {
+            for (var i=0; i<dim; i++) {
+              node._rat_accessors[i] = i;
+            }
+          }
           requireRatFn(ast, node.callee.name, 'rat-vec/vec', used)
 
           var args = node.arguments.slice();
@@ -153,24 +177,7 @@ function processFile(code, extraRequires) {
 
           if (parent.type === 'VariableDeclarator') {
             trackedVariables[parent.id.name] = {
-              component : function(letter) {
-                // TODO: handle access out of range
-                switch (letter) {
-                  case 'x':
-                    return 0;
-                  break;
-                  case 'y':
-                    return 1;
-                  break;
-                  case 'z':
-                    return 2
-                  break;
-                  case 'w':
-                    return 3;
-                  break;
-                }
-                return null;
-              },
+              component : vecLetterToNumber,
               node: node,
               parent: parent,
               length: dim
@@ -238,6 +245,17 @@ function processFile(code, extraRequires) {
             // ensure the right side has been processed prior
             // to creating assignments
             var right = node.expression.right;
+
+            // expect a swizzle
+            if (right.type === 'MemberExpression') {
+
+              enter(right.object, right);
+              if (right.object._rat_type) {
+                right = right.object;
+              }
+
+            }
+
             enter(right, node);
 
             // now, if the right side is some sort of rat_*
@@ -257,11 +275,6 @@ function processFile(code, extraRequires) {
                 }],
                 kind: "var"
               });
-
-              right = {
-                "type": "Identifier",
-                "name": "rat_tmp" + id
-              }
             }
 
             if (variable) {
@@ -283,8 +296,11 @@ function processFile(code, extraRequires) {
                   raw: index+''
                 }
 
-                if (!node.expression.right._rat_type || node.expression.right._rat_length <= 1) {
-                  a.expression.right = right;
+                if (!right._rat_type || right._rat_length <= 1) {
+                  a.expression.right = {
+                    "type": "Identifier",
+                    "name": "rat_tmp" + id
+                  };
                 } else {
                   a.expression.right = {
                     type: "MemberExpression",
@@ -295,8 +311,8 @@ function processFile(code, extraRequires) {
                     },
                     property: {
                       type: "Literal",
-                      value: node.expression.right._rat_accessors[i],
-                      raw: node.expression.right._rat_accessors[i] + ""
+                      value: right._rat_accessors[i],
+                      raw: right._rat_accessors[i] + ""
                     }
                   };
                 }
