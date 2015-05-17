@@ -82,7 +82,7 @@ test('rat vec2 (2 component)', function(t) {
   var r = useRat('"use rat"\nvec2(1, 2);');
 
   t.equal(r, [
-    "var rat_vec = require('rat-vec/index');",
+    "var rat_vec = require('rat-vec/vec');",
     'rat_vec([',
     '    1,',
     '    2',
@@ -97,7 +97,7 @@ test('rat vec2 (1 component)', function(t) {
 
 
   t.equal(r, [
-    "var rat_vec = require('rat-vec/index');",
+    "var rat_vec = require('rat-vec/vec');",
     'rat_vec([',
     '    5,',
     '    5',
@@ -111,7 +111,7 @@ test('rat vec4 (1 component)', function(t) {
   var r = useRat('"use rat"\nvec4(5)');
 
   t.equal(r, [
-    "var rat_vec = require('rat-vec/index');",
+    "var rat_vec = require('rat-vec/vec');",
     'rat_vec([',
     '    5,',
     '    5,',
@@ -126,7 +126,7 @@ test('rat vec4 (4 components)', function(t) {
   var r = useRat('"use rat"\nvec4(1,2,3,4)');
 
   t.equal(r, [
-    "var rat_vec = require('rat-vec/index');",
+    "var rat_vec = require('rat-vec/vec');",
     'rat_vec([',
     '    1,',
     '    2,',

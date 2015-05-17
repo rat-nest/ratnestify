@@ -113,7 +113,7 @@ function processFile(code, extraRequires) {
           var dim = parseInt(name.substring(3), 10);
           node.callee.name = 'rat_vec'
 
-          requireRatFn(ast, node.callee.name, 'rat-vec/index', used)
+          requireRatFn(ast, node.callee.name, 'rat-vec/vec', used)
 
           var args = node.arguments.slice();
           node.arguments = [{

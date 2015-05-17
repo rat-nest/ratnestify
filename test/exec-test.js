@@ -43,9 +43,22 @@ test('exec vec2 (one component)', function(t) {
 test('exec vec2 (two components)', function(t) {
   execute('"use rat";console.log(vec2(1/2, 1/4))', function (r) {
     t.equal(r,
-      '[ <BN: 1>, <BN: 2>, <BN: 4> ]\n',
+      '[ <BN: 2>, <BN: 1>, <BN: 4> ]\n',
       'built a 2 component vector'
     );
     t.end();
   });
+});
+
+test('vec2 addition', function(t) {
+  execute(
+    '"use rat";console.log(vec2(1/2, 1/4) + vec2(1, 1))',
+    function (r) {
+      t.equal(r,
+        '[ <BN: 6>, <BN: 5>, <BN: 4> ]\n',
+        'built a 2 component vector'
+      );
+      t.end();
+    }
+  );
 });
