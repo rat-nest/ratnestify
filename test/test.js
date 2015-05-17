@@ -285,9 +285,8 @@ test('rat vec3 swizzle assignment from swizzle accessor', function(t) {
 
   t.end();
 });
-return
 
-test('rat vec3 swizzle assignment from swizzle accessor', function(t) {
+test('rat vec3 swizzle += from swizzle accessor', function(t) {
   var r = useRat([
     '"use rat"',
     'var v = vec3(1, 2, 3);',
@@ -296,6 +295,9 @@ test('rat vec3 swizzle assignment from swizzle accessor', function(t) {
 
   t.equal(r, [
     "var rat_scalar = require('rat-vec/scalar');",
+    "var rat_add = require('rat-vec/add');",
+    "var rat_get = require('rat-vec/get');",
+    "var rat_set = require('rat-vec/set');",
     "var rat_vec = require('rat-vec/vec');",
     'var v = rat_vec([',
     '    1,',
@@ -308,9 +310,105 @@ test('rat vec3 swizzle assignment from swizzle accessor', function(t) {
     '    rat_scalar(1, 8),',
     '    rat_scalar(1, 16)',
     ']);',
-    'v[2] = rat_tmp0[3];',
-    'v[1] = rat_tmp0[0];',
-    'v[0] = rat_tmp0[1];'
+    'rat_set(v, 2, rat_add(rat_get(v, 2), rat_get(rat_tmp0, 3)));',
+    'rat_set(v, 1, rat_add(rat_get(v, 1), rat_get(rat_tmp0, 0)));',
+    'rat_set(v, 0, rat_add(rat_get(v, 0), rat_get(rat_tmp0, 1)));'
+  ].join('\n'), 'new rat-vec');
+
+  t.end();
+});
+
+test('rat vec3 swizzle -= from swizzle accessor', function(t) {
+  var r = useRat([
+    '"use rat"',
+    'var v = vec3(1, 2, 3);',
+    'v.zyx -= vec4(1/2, 1/4, 1/8, 1/16).wxy;',
+  ].join('\n'));
+
+  t.equal(r, [
+    "var rat_scalar = require('rat-vec/scalar');",
+    "var rat_sub = require('rat-vec/sub');",
+    "var rat_get = require('rat-vec/get');",
+    "var rat_set = require('rat-vec/set');",
+    "var rat_vec = require('rat-vec/vec');",
+    'var v = rat_vec([',
+    '    1,',
+    '    2,',
+    '    3',
+    ']);',
+    'var rat_tmp0 = rat_vec([',
+    '    rat_scalar(1, 2),',
+    '    rat_scalar(1, 4),',
+    '    rat_scalar(1, 8),',
+    '    rat_scalar(1, 16)',
+    ']);',
+    'rat_set(v, 2, rat_sub(rat_get(v, 2), rat_get(rat_tmp0, 3)));',
+    'rat_set(v, 1, rat_sub(rat_get(v, 1), rat_get(rat_tmp0, 0)));',
+    'rat_set(v, 0, rat_sub(rat_get(v, 0), rat_get(rat_tmp0, 1)));'
+  ].join('\n'), 'new rat-vec');
+
+  t.end();
+});
+
+test('rat vec3 swizzle *= from swizzle accessor', function(t) {
+  var r = useRat([
+    '"use rat"',
+    'var v = vec3(1, 2, 3);',
+    'v.zyx *= vec4(1/2, 1/4, 1/8, 1/16).wxy;',
+  ].join('\n'));
+
+  t.equal(r, [
+    "var rat_scalar = require('rat-vec/scalar');",
+    "var rat_mul = require('rat-vec/mul');",
+    "var rat_get = require('rat-vec/get');",
+    "var rat_set = require('rat-vec/set');",
+    "var rat_vec = require('rat-vec/vec');",
+    'var v = rat_vec([',
+    '    1,',
+    '    2,',
+    '    3',
+    ']);',
+    'var rat_tmp0 = rat_vec([',
+    '    rat_scalar(1, 2),',
+    '    rat_scalar(1, 4),',
+    '    rat_scalar(1, 8),',
+    '    rat_scalar(1, 16)',
+    ']);',
+    'rat_set(v, 2, rat_mul(rat_get(v, 2), rat_get(rat_tmp0, 3)));',
+    'rat_set(v, 1, rat_mul(rat_get(v, 1), rat_get(rat_tmp0, 0)));',
+    'rat_set(v, 0, rat_mul(rat_get(v, 0), rat_get(rat_tmp0, 1)));'
+  ].join('\n'), 'new rat-vec');
+
+  t.end();
+});
+
+test('rat vec3 swizzle /= from swizzle accessor', function(t) {
+  var r = useRat([
+    '"use rat"',
+    'var v = vec3(1, 2, 3);',
+    'v.zyx /= vec4(1/2, 1/4, 1/8, 1/16).wxy;',
+  ].join('\n'));
+
+  t.equal(r, [
+    "var rat_scalar = require('rat-vec/scalar');",
+    "var rat_div = require('rat-vec/div');",
+    "var rat_get = require('rat-vec/get');",
+    "var rat_set = require('rat-vec/set');",
+    "var rat_vec = require('rat-vec/vec');",
+    'var v = rat_vec([',
+    '    1,',
+    '    2,',
+    '    3',
+    ']);',
+    'var rat_tmp0 = rat_vec([',
+    '    rat_scalar(1, 2),',
+    '    rat_scalar(1, 4),',
+    '    rat_scalar(1, 8),',
+    '    rat_scalar(1, 16)',
+    ']);',
+    'rat_set(v, 2, rat_div(rat_get(v, 2), rat_get(rat_tmp0, 3)));',
+    'rat_set(v, 1, rat_div(rat_get(v, 1), rat_get(rat_tmp0, 0)));',
+    'rat_set(v, 0, rat_div(rat_get(v, 0), rat_get(rat_tmp0, 1)));'
   ].join('\n'), 'new rat-vec');
 
   t.end();

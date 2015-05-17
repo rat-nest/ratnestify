@@ -183,8 +183,6 @@ function processFile(code, extraRequires) {
               length: dim
             }
           }
-
-
         } else if (node.type === 'MemberExpression') {
           var variable = node.object.name;
           var tracked = trackedVariables[variable];
@@ -320,15 +318,16 @@ function processFile(code, extraRequires) {
               for (var i=0; i<l; i++) {
 
                 a = clone(base);
-                array.splice((loc++) + i, 0, a);
+                array.splice((loc++) + i + 1, 0, a);
 
                 var leftIndex = vecLetterToNumber(leftProp[i]);
-
-                a.expression.arguments.push({
+                var leftIndexArg = {
                   type: 'Literal',
                   value: leftIndex,
                   raw: leftIndex+''
-                });
+                };
+
+                a.expression.arguments.push(leftIndexArg);
 
                 if (!right._rat_type || right._rat_length <= 1) {
                   a.expression.arguments.push({
@@ -336,9 +335,8 @@ function processFile(code, extraRequires) {
                     "name": "rat_tmp" + id
                   });
                 } else {
-                  var rightIndex = (rightProp)? vecLetterToNumber(rightProp[i]) : right._rat_accessors[i];
-                  requireRatFn(ast, 'rat_get', moduleMap.rat + 'get', used);
-                  a.expression.arguments.push({
+
+                  var lastArg = {
                     type: 'CallExpression',
                     callee: {
                       type: 'Identifier',
@@ -352,7 +350,77 @@ function processFile(code, extraRequires) {
                       value: right._rat_accessors[i],
                       raw: right._rat_accessors[i] + ""
                     }]
-                  });
+                  };
+
+                  requireRatFn(ast, 'rat_get', moduleMap.rat + 'get', used);
+
+
+                  // simple assignment `=`
+                  if (node.expression.operator.length === 1) {
+                    var rightIndex = (rightProp)? vecLetterToNumber(rightProp[i]) : right._rat_accessors[i];
+                    a.expression.arguments.push(lastArg);
+                  } else {
+
+                    var inject = {
+                      type: 'CallExpression',
+                      callee: {
+                        type: 'Identifier',
+                        name: 'rat_add'
+                      },
+                      arguments: [{
+                        type: 'CallExpression',
+                        callee: {
+                          type: 'Identifier',
+                          name: 'rat_get'
+                        },
+                        arguments: [{
+                          type: 'Identifier',
+                          name: left.object.name
+                        }, leftIndexArg]
+                      }, lastArg]
+                    };
+
+                    switch (node.expression.operator) {
+                      case '+=':
+                        inject.callee.name = 'rat_add'
+                        requireRatFn(
+                          ast,
+                          inject.callee.name,
+                          moduleMap.rat + 'add',
+                          used
+                        );
+                      break;
+                      case '-=':
+                        inject.callee.name = 'rat_sub'
+                        requireRatFn(
+                          ast,
+                          inject.callee.name,
+                          moduleMap.rat + 'sub',
+                          used
+                        );
+                      break;
+                      case '*=':
+                        inject.callee.name = 'rat_mul'
+                        requireRatFn(
+                          ast,
+                          inject.callee.name,
+                          moduleMap.rat + 'mul',
+                          used
+                        );
+                      break;
+                      case '/=':
+                        inject.callee.name = 'rat_div'
+                        requireRatFn(
+                          ast,
+                          inject.callee.name,
+                          moduleMap.rat + 'div',
+                          used
+                        );
+                      break;
+                    }
+
+                    a.expression.arguments.push(inject);
+                  }
                 }
               }
             }
