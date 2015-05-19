@@ -463,3 +463,67 @@ test('rat vec3 swizzle /= from swizzle accessor', function(t) {
 
   t.end();
 });
+
+/*
+
+TODO: handle ops on right
+
+"use rat"
+var v = vec3(1, 2, 3);
+var v2 = vec2(5, 5);
+v.z = v2.x + v2.y;
+*/
+
+// TODO: left/right mismatch: v.x = v2.xy
+
+/*
+
+TODO: follow assignment
+
+var v = vec2(1, 2);
+var a = v;
+a.x = 1/2
+
+*/
+
+/*
+
+TODO: += component
+
+var v = vec2(1, 2);
+var a = v;
+a.x += 1/2
+
+--------------
+
+var v = vec2(1, 2);
+var x = v.x;
+x += 1/2
+
+*/
+
+// TODO: test `var a = vec2(1, 2) / vec2(1/2) + vec2(1/4);`
+
+test('play', function(t) {
+    var r = useRat([
+    '"use rat"',
+    'var a = (vec2(1, 2) + vec2(1/2)) / vec10(1/4)',
+  ].join('\n'));
+  console.log(r);
+  t.end()
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

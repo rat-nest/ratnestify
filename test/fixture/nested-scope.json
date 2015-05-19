@@ -1,0 +1,83 @@
+{
+    "type": "Program",
+    "body": [
+        {
+            "type": "FunctionDeclaration",
+            "id": {
+                "type": "Identifier",
+                "name": "a"
+            },
+            "params": [],
+            "defaults": [],
+            "body": {
+                "type": "BlockStatement",
+                "body": [
+                    {
+                        "type": "ExpressionStatement",
+                        "expression": {
+                            "type": "Literal",
+                            "value": "use rat",
+                            "raw": "\"use rat\""
+                        }
+                    },
+                    {
+                        "type": "ExpressionStatement",
+                        "expression": {
+                            "type": "BinaryExpression",
+                            "operator": "+",
+                            "left": {
+                                "type": "Identifier",
+                                "name": "b"
+                            },
+                            "right": {
+                                "type": "Identifier",
+                                "name": "c"
+                            }
+                        }
+                    },
+                    {
+                        "type": "FunctionDeclaration",
+                        "id": {
+                            "type": "Identifier",
+                            "name": "b"
+                        },
+                        "params": [],
+                        "defaults": [],
+                        "body": {
+                            "type": "BlockStatement",
+                            "body": [
+                                {
+                                    "type": "ExpressionStatement",
+                                    "expression": {
+                                        "type": "Literal",
+                                        "value": "use rat",
+                                        "raw": "\"use rat\""
+                                    }
+                                },
+                                {
+                                    "type": "ExpressionStatement",
+                                    "expression": {
+                                        "type": "BinaryExpression",
+                                        "operator": "+",
+                                        "left": {
+                                            "type": "Identifier",
+                                            "name": "a"
+                                        },
+                                        "right": {
+                                            "type": "Identifier",
+                                            "name": "b"
+                                        }
+                                    }
+                                }
+                            ]
+                        },
+                        "generator": false,
+                        "expression": false
+                    }
+                ]
+            },
+            "generator": false,
+            "expression": false
+        }
+    ]
+}
