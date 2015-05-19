@@ -269,17 +269,7 @@ function processFile(code, extraRequires) {
 
             var base = {
               type: 'ExpressionStatement',
-              expression: {
-                type: 'CallExpression',
-                callee: {
-                  type: 'Identifier',
-                  name: 'rat_set'
-                },
-                arguments: [{
-                  type: 'Identifier',
-                  name: leftName
-                }]
-              }
+              expression: gen_call('rat_set', gen_identifier(leftName))
             };
 
             var id = tmp_id++;
@@ -378,47 +368,26 @@ function processFile(code, extraRequires) {
                   a.expression.arguments.push(leftIndexArg);
 
 
-                  var lastArg = {
-                    type: 'CallExpression',
-                    callee: {
-                      type: 'Identifier',
-                      name: 'rat_get'
-                    },
-                    arguments: [{
-                      type: 'Identifier',
-                      name: rightIdentifierName
-                    }, {
-                      type: 'Literal',
-                      value: rightAccessors[i],
-                      raw: rightAccessors[i] + ""
-                    }]
-                  };
+                  var lastArg = gen_call('rat_get',
+                    gen_identifier(rightIdentifierName),
+                    gen_literal(rightAccessors[i])
+                  );
 
                   requireRatFn(ast, 'rat_get', moduleMap.rat + 'get', used);
-
 
                   // simple assignment `=`
                   if (node.expression.operator.length === 1) {
                     a.expression.arguments.push(lastArg);
                   } else {
-                    var inject = {
-                      type: 'CallExpression',
-                      callee: {
-                        type: 'Identifier',
-                        name: 'rat_add'
-                      },
-                      arguments: [{
-                        type: 'CallExpression',
-                        callee: {
-                          type: 'Identifier',
-                          name: 'rat_get'
-                        },
-                        arguments: [{
-                          type: 'Identifier',
-                          name: leftIdentifierName
-                        }, leftIndexArg]
-                      }, lastArg]
-                    };
+
+                    var inject = gen_call('rat_add',
+                      gen_call('rat_get',
+                        gen_identifier(leftIdentifierName),
+                        leftIndexArg
+                      ),
+                      lastArg
+                    );
+
 
                     switch (node.expression.operator) {
                       case '+=':
@@ -492,32 +461,10 @@ function requireRatFn(ast, varName, moduleName, used) {
   if (used[varName]) { return }
   used[varName] = true;
 
-  ast.body.unshift({
-    type: "VariableDeclaration",
-    declarations: [{
-        type: "VariableDeclarator",
-        id: {
-          type: "Identifier",
-          name: varName
-        },
-        init: {
-          type: "CallExpression",
-          callee: {
-            type: "Identifier",
-            name: "require"
-          },
-          arguments: [
-            {
-              type: "Literal",
-              value: moduleName,
-              raw: "'" + moduleName + "'"
-            }
-          ]
-        }
-      }
-    ],
-    kind: "var"
-  });
+  ast.body.unshift(gen_var(
+    varName,
+    gen_call('require', gen_literal(moduleName, gen_quote(moduleName)))
+  ));
 }
 
 function ratFromScalar(node) {
@@ -560,4 +507,55 @@ function buildBinaryFunction(op, node, ast) {
   ];
 
   return name;
+}
+
+function gen_var(name, init) {
+  return {
+    type: "VariableDeclaration",
+    declarations: [{
+      type: "VariableDeclarator",
+      id: gen_identifier(name),
+      init: init
+    }],
+    kind: "var"
+  };
+}
+
+function gen_quote(val) {
+  return gen_wrap(val,  "'");
+}
+
+function gen_wrap(val, token) {
+  return token + val + token;
+}
+
+function gen_literal(value, raw) {
+  if (!raw) {
+    raw = value + '';
+  }
+  return {
+    type: "Literal",
+    value: value,
+    raw: raw
+  };
+}
+
+function gen_identifier(name) {
+  // TODO: handle objects
+  return {
+    type: 'Identifier',
+    name: name
+  };
+}
+
+function gen_call(method) {
+  var args = [];
+  Array.prototype.push.apply(args, arguments);
+  args.shift();
+
+  return {
+    type: 'CallExpression',
+    callee: gen_identifier(method),
+    arguments: args
+  };
 }
