@@ -35,65 +35,73 @@ function vecLetterToNumber(letter) {
   return null;
 }
 
+function gen_rat_op(name) {
+  return function(left, right) {
+
+    if (left.type === 'Literal') {
+      gen_rat_from_scalar(left);
+    }
+
+    if (right.type === 'Literal') {
+      gen_rat_from_scalar(right);
+    }
+
+    return name;
+  }
+}
+
+var moduleMap = {
+  'rat': 'rat-vec/',
+  'rat_vec': 'rat-vec/',
+  'rat_mat': 'rat-mat/'
+}
+
+var useMap = {
+  '/' : function(left, right, ast) {
+    if (left.type === 'Literal' && right.type === 'Literal') {
+      return 'rat_scalar'
+    } else {
+
+      // a/4
+      if (right.type === 'Literal') {
+        return 'rat_divs';
+      }
+
+      // 4/a = rat_div(rat_scalar(4,1), a)
+      if (left.type === 'Literal') {
+        requireRatFn(ast, 'rat_scalar', moduleMap.rat + 'scalar', used);
+        gen_rat_from_scalar(left);
+      }
+
+      return 'rat_div'
+    }
+  },
+  '*' : gen_rat_op('rat_mul'),
+  '+' : gen_rat_op('rat_add'),
+  '-' : gen_rat_op('rat_sub')
+}
+
+function debug(ast) {
+  console.log(JSON.stringify(ast, function(key, value) {
+    if (key !== 'parent') {
+      return value;
+    }
+  }, ' '))
+}
+
+
 function processFile(code, extraRequires) {
   extraRequires = extraRequires || [];
   var tmp_id = 0;
   var ast = esprima.parse(code);
 
+  // uncomment to see the ast
+  // debug(ast);
+
   // locate 'use rat'
   var locations = extractScopes(ast);
 
-  function createOp(name) {
-    return function(left, right) {
-
-      if (left.type === 'Literal') {
-        ratFromScalar(left);
-      }
-
-      if (right.type === 'Literal') {
-        ratFromScalar(right);
-      }
-
-      return name;
-    }
-  }
-
-// TODO: rat-vec bindings
-
-  var moduleMap = {
-    'rat': 'rat-vec/',
-    'rat_vec': 'rat-vec/',
-    'rat_mat': 'rat-mat/'
-  }
-
   var used = {};
-  var useMap = {
-    '/' : function(left, right, ast) {
-      if (left.type === 'Literal' && right.type === 'Literal') {
-        return 'rat_scalar'
-      } else {
-
-        // a/4
-        if (right.type === 'Literal') {
-          return 'rat_divs';
-        }
-
-        // 4/a = rat_div(rat_scalar(4,1), a)
-        if (left.type === 'Literal') {
-          requireRatFn(ast, 'rat_scalar', moduleMap.rat + 'scalar', used);
-          ratFromScalar(left);
-        }
-
-        return 'rat_div'
-      }
-    },
-    '*' : createOp('rat_mul'),
-    '+' : createOp('rat_add'),
-    '-' : createOp('rat_sub')
-  }
-
-  // console.log(JSON.stringify(ast, null, '  '));
-
   var trackedVariables = {};
 
   locations.forEach(function(location) {
@@ -444,7 +452,7 @@ function requireRatFn(ast, varName, moduleName, used) {
   ));
 }
 
-function ratFromScalar(node) {
+function gen_rat_from_scalar(node) {
   node.type = 'CallExpression';
   node.callee = {
     type: 'Identifier',
