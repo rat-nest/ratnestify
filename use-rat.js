@@ -3,6 +3,7 @@ var estraverse = require('estraverse');
 var escodegen = require('escodegen');
 var through = require('through2')
 var clone = require('clone');
+var extractScopes = require('./extract-scopes');
 
 onFile.processFile = processFile
 module.exports = onFile;
@@ -40,31 +41,7 @@ function processFile(code, extraRequires) {
   var ast = esprima.parse(code);
 
   // locate 'use rat'
-  var locations = [];
-  estraverse.traverse(ast, {
-    enter: function(node, parent) {
-      if (node.type === 'ExpressionStatement' && node.expression.value === 'use rat') {
-        locations.push(parent);
-
-        var p = parent;
-        if (p.body) {
-          p = p.body;
-        }
-
-        for (var i = 0; i<p.length; i++) {
-
-          if (p[i] === node) {
-            p.splice(i, 1);
-            break;
-          }
-        }
-
-        return estraverse.VisitorOption.REMOVE;
-      }
-    },
-    exit : function(node, parent) {
-    }
-  });
+  var locations = extractScopes(ast);
 
   function createOp(name) {
     return function(left, right) {
