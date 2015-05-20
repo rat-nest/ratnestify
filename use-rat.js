@@ -56,30 +56,6 @@ var moduleMap = {
   'rat_mat': 'rat-mat/'
 }
 
-var useMap = {
-  '/' : function(left, right, ast) {
-    if (left.type === 'Literal' && right.type === 'Literal') {
-      return 'rat_scalar'
-    } else {
-
-      // a/4
-      if (right.type === 'Literal') {
-        return 'rat_divs';
-      }
-
-      // 4/a = rat_div(rat_scalar(4,1), a)
-      if (left.type === 'Literal') {
-        requireRatFn(ast, 'rat_scalar', moduleMap.rat + 'scalar', used);
-        gen_rat_from_scalar(left);
-      }
-
-      return 'rat_div'
-    }
-  },
-  '*' : gen_rat_op('rat_mul'),
-  '+' : gen_rat_op('rat_add'),
-  '-' : gen_rat_op('rat_sub')
-}
 
 function debug(ast) {
   console.log(JSON.stringify(ast, function(key, value) {
@@ -91,6 +67,31 @@ function debug(ast) {
 
 
 function processString(code, extraRequires) {
+  var useMap = {
+    '/' : function(left, right, ast) {
+      if (left.type === 'Literal' && right.type === 'Literal') {
+        return 'rat_scalar'
+      } else {
+
+        // a/4
+        if (right.type === 'Literal') {
+          return 'rat_divs';
+        }
+
+        // 4/a = rat_div(rat_scalar(4,1), a)
+        if (left.type === 'Literal') {
+          requireRatFn(ast, 'rat_scalar', moduleMap.rat + 'scalar', used);
+          gen_rat_from_scalar(left);
+        }
+
+        return 'rat_div'
+      }
+    },
+    '*' : gen_rat_op('rat_mul'),
+    '+' : gen_rat_op('rat_add'),
+    '-' : gen_rat_op('rat_sub')
+  };
+
   extraRequires = extraRequires || [];
   var tmp_id = 0;
   var ast = esprima.parse(code);
