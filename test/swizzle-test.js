@@ -2,7 +2,7 @@ var test = require('tape');
 var fs = require('fs');
 var path = require('path');
 
-var useRat = require('../use-rat').processFile;
+var useRat = require('../use-rat').processString;
 
 test('rat vec1 non-assignment accessor', function(t) {
   var r = useRat([

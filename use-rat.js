@@ -5,12 +5,12 @@ var through = require('through2')
 var clone = require('clone');
 var extractScopes = require('./extract-scopes');
 
-onFile.processFile = processFile
+onFile.processString = processString
 module.exports = onFile;
 
 function onFile(filename, flags) {
   return through(function(d, enc, cb) {
-    var r = processFile(d.toString());
+    var r = processString(d.toString());
     this.push(r)
     cb();
   })
@@ -90,7 +90,7 @@ function debug(ast) {
 }
 
 
-function processFile(code, extraRequires) {
+function processString(code, extraRequires) {
   extraRequires = extraRequires || [];
   var tmp_id = 0;
   var ast = esprima.parse(code);
