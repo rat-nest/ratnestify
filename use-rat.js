@@ -149,7 +149,7 @@ function processString(code, extraRequires) {
               node._rat_accessors[i] = i;
             }
           }
-          requireRatFn(ast, node.callee.name, 'rat-vec/vec', used)
+          requireRatFn(ast, node.callee.name, 'rat-vec/index', used)
 
           var args = node.arguments.slice();
           node.arguments = [{

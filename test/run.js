@@ -1,5 +1,5 @@
 var useRat = require('../use-rat').processString;
-var STR = require('./str');
+var STR = require('js-function-string');
 
 module.exports = run;
 

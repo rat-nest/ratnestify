@@ -10,6 +10,7 @@
   "devDependencies": {
     "browserify": "^10.2.0",
     "concat-stream": "^1.4.8",
+    "js-function-string": "^1.0.0",
     "tape": "^4.0.0",
     "tmp": "0.0.26"
   },

@@ -1,138 +1,157 @@
+var run = require('./run');
 var test = require('tape');
-var fs = require('fs');
-var path = require('path');
-
-var fixtures = path.join(__dirname, 'fixture');
-var useRat = require('../use-rat').processString;
-
-function runFixture(fixture, fn) {
-  return function(t) {
-    fs.readFile(path.join(fixtures, fixture), function(e, d) {
-      t.error(e, 'read fixture: ' + fixture);
-      fn(t, useRat(d.toString()))
-    });
-  }
-}
 
 test('division', function(t) {
-  var r = useRat('"use rat"\nvar a = b/c');
-  t.equal(r, [
-    "var rat_div = require('rat-vec/div');",
-    'var a = rat_div(b, c);'
-  ].join('\n'), 'rat_div');
+  var r = run(t, function() {
+    "use rat"
+    var a = b/c;
+  }, function() {
+    var rat_div = require('rat-vec/div');
+    var a = rat_div(b, c);
+  });
   t.end();
 });
 
 test('division rat vs constant (denominator)', function(t) {
-  var r = useRat('"use rat"\nvar a = b/5');
-  t.equal(r, [
-    "var rat_divs = require('rat-vec/divs');",
-    'var a = rat_divs(b, 5);',
-  ].join('\n'), 'rat_divs');
+  var r = run(t, function() {
+    "use rat"
+    var a = b/5;
+  }, function() {
+    var rat_divs = require('rat-vec/divs');
+    var a = rat_divs(b, 5);
+  });
   t.end();
 });
 
 test('division rat vs constant (numerator)', function(t) {
-  var r = useRat('"use rat"\nvar a = 5/b');
-  t.equal(r, [
-    "var rat_div = require('rat-vec/div');",
-    "var rat_scalar = require('rat-vec/scalar');",
-    'var a = rat_div(rat_scalar(5, 1), b);'
-  ].join('\n'), 'rat_div');
+  var r = run(t, function() {
+    "use rat"
+    var a = 5/b;
+  }, function() {
+    var rat_div = require('rat-vec/div');
+    var rat_scalar = require('rat-vec/scalar');
+    var a = rat_div(rat_scalar(5, 1), b);
+  });
 
   t.end();
 });
 
-test('rat addition (constants)', runFixture('simple-addition.js', function(t, r) {
-  t.equal(r, [
-    "var rat_scalar = require('rat-vec/scalar');",
-    "var rat_add = require('rat-vec/add');",
-    'var a = rat_add(rat_scalar(1, 2), rat_scalar(1, 2));'
-  ].join('\n'), 'replace ops with fn calls');
-  t.end();
-}));
+test('rat addition (constants)', function(t, r) {
 
-test('rat addition (vars)', runFixture('addition-vars.js', function(t, r) {
-  t.equal(r, [
-    "var rat_add = require('rat-vec/add');",
-    "var rat_scalar = require('rat-vec/scalar');",
-    'var a = rat_scalar(1, 2);',
-    'var b = rat_scalar(2, 2);',
-    'var c = rat_add(a, b);',
-  ].join('\n'), 'replace ops with fn calls');
+  run(t, function() {
+    'use rat'
+    var a = 1/2 + 1/2
+  }, function() {
+    var rat_scalar = require('rat-vec/scalar');
+    var rat_add = require('rat-vec/add');
+    var a = rat_add(rat_scalar(1, 2), rat_scalar(1, 2));
+  });
 
   t.end();
-}));
+});
 
-test('rat scoped in function', runFixture('scoped.js', function(t, r) {
-  t.equal(r, [
-    "var rat_scalar = require('rat-vec/scalar');",
-    "var rat_add = require('rat-vec/add');",
-    'function someFunction() {',
-    '    var a = rat_add(rat_scalar(1, 2), rat_scalar(2, 1));',
-    '    return a;',
-    '}',
-    'console.log(someFunction());'
-  ].join('\n'),'replace ops with fn calls');
+test('rat addition (vars)', function(t, r) {
+  run(t, function() {
+    'use rat'
+
+    var a = 1/2;
+    var b = 2/2;
+
+    var c = a + b
+  }, function() {
+    var rat_add = require('rat-vec/add');
+    var rat_scalar = require('rat-vec/scalar');
+    var a = rat_scalar(1, 2);
+    var b = rat_scalar(2, 2);
+    var c = rat_add(a, b);
+  });
 
   t.end();
-}));
+});
+
+test('rat scoped in function', function(t) {
+
+  run(t, function() {
+    function someFunction() {
+      'use rat'
+      var a = 1/2+2;
+      return a;
+    }
+
+    console.log(someFunction());
+  }, function() {
+    var rat_scalar = require('rat-vec/scalar');
+    var rat_add = require('rat-vec/add');
+    function someFunction() {
+        var a = rat_add(rat_scalar(1, 2), rat_scalar(2, 1));
+        return a;
+    }
+    console.log(someFunction());
+  });
+
+  t.end();
+});
 
 test('rat vec2 (2 component)', function(t) {
-  var r = useRat('"use rat"\nvec2(1, 2);');
-
-  t.equal(r, [
-    "var rat_vec = require('rat-vec/vec');",
-    'rat_vec([',
-    '    1,',
-    '    2',
-    ']);',
-  ].join('\n'), 'fill in the other component');
+  var r = run(t, function() {
+    "use rat"
+    vec2(1, 2);
+  }, function() {
+    var rat_vec = require('rat-vec/index');
+    rat_vec([
+        1,
+        2
+    ]);
+  });
 
   t.end();
 });
 
 test('rat vec2 (1 component)', function(t) {
-  var r = useRat('"use rat"\nvec2(5)');
-
-
-  t.equal(r, [
-    "var rat_vec = require('rat-vec/vec');",
-    'rat_vec([',
-    '    5,',
-    '    5',
-    ']);',].join('\n'), 'fill in the other component');
-
+  run(t, function() {
+    "use rat"
+    vec2(5)
+  }, function() {
+    var rat_vec = require('rat-vec/index');
+    rat_vec([
+        5,
+        5
+    ]);
+  });
 
   t.end();
 });
 
 test('rat vec4 (1 component)', function(t) {
-  var r = useRat('"use rat"\nvec4(5)');
-
-  t.equal(r, [
-    "var rat_vec = require('rat-vec/vec');",
-    'rat_vec([',
-    '    5,',
-    '    5,',
-    '    5,',
-    '    5',
-    ']);',].join('\n'), 'fill in the other component');
+  var r = run(t, function() {
+    "use rat"
+    vec4(5);
+  }, function() {
+    var rat_vec = require('rat-vec/index');
+    rat_vec([
+        5,
+        5,
+        5,
+        5
+    ]);
+  });
 
   t.end();
 });
 
 test('rat vec4 (4 components)', function(t) {
-  var r = useRat('"use rat"\nvec4(1,2,3,4)');
-
-  t.equal(r, [
-    "var rat_vec = require('rat-vec/vec');",
-    'rat_vec([',
-    '    1,',
-    '    2,',
-    '    3,',
-    '    4',
-    ']);',].join('\n'), 'fill in the other component');
+  var r = run(t, function() {
+    "use rat"
+    vec4(1,2,3,4);
+  }, function() {
+    var rat_vec = require('rat-vec/index');
+    rat_vec([
+        1,
+        2,
+        3,
+        4
+    ]);
+  })
 
   t.end();
 });
